@@ -1,0 +1,119 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local itemsFolder = workspace:WaitForChild("Items")
+local validNames = { Main = true, Handle = true, Coal = true, Meat = true }
+
+-- Exclude certain parent names
+local function isExcludedParent(name)
+	return name:match("^Item Chest") or name == "Sapling"
+end
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "PartMoverGui"
+screenGui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 260, 0, 400)
+frame.Position = UDim2.new(0, 10, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true -- makes it draggable
+frame.Visible = true
+
+local scrollingFrame = Instance.new("ScrollingFrame", frame)
+scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.BorderSizePixel = 0
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.ScrollBarThickness = 6
+scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local uiList = Instance.new("UIListLayout", scrollingFrame)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 4)
+
+-- Track existing buttons
+local buttons = {}
+
+-- Create a button for the parent name
+local function createButtonFor(parentName)
+	local button = Instance.new("TextButton")
+	button.Parent = scrollingFrame
+	button.Size = UDim2.new(1, -10, 0, 28)
+	button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Font = Enum.Font.SourceSans
+	button.TextSize = 16
+	button.Text = "Move: " .. parentName
+	button.Name = parentName
+
+	button.MouseButton1Click:Connect(function()
+		local moveTo = hrp.Position + hrp.CFrame.LookVector * 6 + Vector3.new(0, 3, 0)
+		local count = 0
+
+		for _, instance in ipairs(itemsFolder:GetChildren()) do
+			if instance:IsA("Model") and instance.Name == parentName and not isExcludedParent(instance.Name) then
+				local origin = instance:GetModelCFrame().Position
+				for _, part in ipairs(instance:GetDescendants()) do
+					if part:IsA("BasePart") then
+						local offset = part.Position - origin
+						part.Position = moveTo + offset
+					end
+				end
+				count += 1
+			end
+		end
+
+		print(`[Moved] {count} model(s) named "{parentName}" to position {moveTo}`)
+	end)
+
+	buttons[parentName] = button
+end
+
+-- Update the button list every second
+task.spawn(function()
+	while true do
+		local currentParentNames = {}
+
+		for _, part in ipairs(itemsFolder:GetDescendants()) do
+			local parent = part.Parent
+			if validNames[part.Name] and parent and not isExcludedParent(parent.Name) then
+				currentParentNames[parent.Name] = true
+			end
+		end
+
+		-- Add new buttons
+		for name in pairs(currentParentNames) do
+			if not buttons[name] then
+				createButtonFor(name)
+			end
+		end
+
+		-- Remove buttons for non-existent parents
+		for name, button in pairs(buttons) do
+			if not currentParentNames[name] then
+				button:Destroy()
+				buttons[name] = nil
+			end
+		end
+
+		task.wait(1)
+	end
+end)
+
+-- Toggle GUI with B key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.B then
+		frame.Visible = not frame.Visible
+	end
+end)

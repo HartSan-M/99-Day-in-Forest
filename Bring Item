@@ -13,6 +13,7 @@ local function isExcludedParent(name)
 		or name == "Sapling"
 		or name == "HumanoidRootPart"
 		or name == "Mossy Coin"
+		or name == "Stronghold Diamond Chest"
 end
 
 local oldGui = player:FindFirstChild("PlayerGui"):FindFirstChild("PartMoverGui")

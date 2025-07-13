@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -22,15 +23,31 @@ local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 260, 0, 400)
 frame.Position = UDim2.new(0, 10, 0.5, -200)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = 0.2
+frame.BackgroundTransparency = 1 -- Start fully hidden
 frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = true -- makes it draggable
-frame.Visible = true
+frame.Draggable = true
+frame.Visible = false
 
+-- === Title Panel ===
+local titlePanel = Instance.new("Frame", frame)
+titlePanel.Size = UDim2.new(1, 0, 0, 30)
+titlePanel.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+titlePanel.BorderSizePixel = 0
+
+local titleLabel = Instance.new("TextLabel", titlePanel)
+titleLabel.Size = UDim2.new(1, 0, 1, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Bring Item"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 18
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextStrokeTransparency = 0.8
+
+-- === Scrolling Frame ===
 local scrollingFrame = Instance.new("ScrollingFrame", frame)
-scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
-scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.Size = UDim2.new(1, 0, 1, -30)
+scrollingFrame.Position = UDim2.new(0, 0, 0, 30)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.BorderSizePixel = 0
 scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -41,14 +58,14 @@ local uiList = Instance.new("UIListLayout", scrollingFrame)
 uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Padding = UDim.new(0, 4)
 
--- Track existing buttons
+-- Track buttons
 local buttons = {}
 
--- Create a button for the parent name
 local function createButtonFor(parentName)
 	local button = Instance.new("TextButton")
 	button.Parent = scrollingFrame
 	button.Size = UDim2.new(1, -10, 0, 28)
+	button.Position = UDim2.new(0, 5, 0, 0)
 	button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.SourceSans
@@ -79,7 +96,7 @@ local function createButtonFor(parentName)
 	buttons[parentName] = button
 end
 
--- Update the button list every second
+-- Update buttons every second
 task.spawn(function()
 	while true do
 		local currentParentNames = {}
@@ -91,14 +108,12 @@ task.spawn(function()
 			end
 		end
 
-		-- Add new buttons
 		for name in pairs(currentParentNames) do
 			if not buttons[name] then
 				createButtonFor(name)
 			end
 		end
 
-		-- Remove buttons for non-existent parents
 		for name, button in pairs(buttons) do
 			if not currentParentNames[name] then
 				button:Destroy()
@@ -110,10 +125,29 @@ task.spawn(function()
 	end
 end)
 
--- Toggle GUI with B key
+-- Tween fade in/out
+local isVisible = false
+local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function fadeGUI(show)
+	if show then
+		frame.Visible = true
+		local fadeIn = TweenService:Create(frame, tweenInfo, { BackgroundTransparency = 0.2 })
+		fadeIn:Play()
+	else
+		local fadeOut = TweenService:Create(frame, tweenInfo, { BackgroundTransparency = 1 })
+		fadeOut:Play()
+		fadeOut.Completed:Connect(function()
+			frame.Visible = false
+		end)
+	end
+end
+
+-- Toggle on B
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.B then
-		frame.Visible = not frame.Visible
+		isVisible = not isVisible
+		fadeGUI(isVisible)
 	end
 end)

@@ -9,7 +9,10 @@ local itemsFolder = workspace:WaitForChild("Items")
 local validNames = { Main = true, Handle = true, Coal = true, Meat = true }
 
 local function isExcludedParent(name)
-	return name:match("^Item Chest") or name == "Sapling"
+	return name:match("^Item Chest")
+		or name == "Sapling"
+		or name == "HumanoidRootPart"
+		or name == "Mossy Coin"
 end
 
 local oldGui = player:FindFirstChild("PlayerGui"):FindFirstChild("PartMoverGui")
@@ -88,15 +91,13 @@ local function createButtonFor(parentName, quantity)
 	button.TextColor3 = Color3.fromRGB(230, 230, 230)
 	button.Font = Enum.Font.Gotham
 	button.TextSize = 15
-	button.Text = "Move: " .. parentName .. " (" .. quantity .. ")"
+	button.Text = "▶ Move: " .. parentName .. " (" .. quantity .. ")"
 	button.Name = parentName
 	button.AutoButtonColor = false
 
-	-- Rounded button
 	local round = Instance.new("UICorner", button)
 	round.CornerRadius = UDim.new(0, 8)
 
-	-- Hover effect
 	button.MouseEnter:Connect(function()
 		TweenService:Create(button, TweenInfo.new(0.2), {
 			BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -158,7 +159,7 @@ task.spawn(function()
 	end
 end)
 
--- Tween fade
+-- Fade logic
 local isVisible = true
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local function fadeGUI(show)
@@ -174,7 +175,6 @@ local function fadeGUI(show)
 	end
 end
 
--- Toggle key (B)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.B then

@@ -14,20 +14,25 @@ local function isExcludedParent(name)
 	return name:match("^Item Chest") or name == "Sapling"
 end
 
--- GUI Setup
-local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+-- Remove old GUI if it exists
+local oldGui = player:FindFirstChild("PlayerGui"):FindFirstChild("PartMoverGui")
+if oldGui then oldGui:Destroy() end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PartMoverGui"
 screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 260, 0, 400)
 frame.Position = UDim2.new(0, 10, 0.5, -200)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = 1 -- Start fully hidden
+frame.BackgroundTransparency = 1 -- Start hidden, fade in
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-frame.Visible = false
+frame.Visible = true -- Default visible
 
 -- === Title Panel ===
 local titlePanel = Instance.new("Frame", frame)
@@ -44,7 +49,7 @@ titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextStrokeTransparency = 0.8
 
--- === Scrolling Frame ===
+-- === Scrollable Area ===
 local scrollingFrame = Instance.new("ScrollingFrame", frame)
 scrollingFrame.Size = UDim2.new(1, 0, 1, -30)
 scrollingFrame.Position = UDim2.new(0, 0, 0, 30)
@@ -61,16 +66,15 @@ uiList.Padding = UDim.new(0, 4)
 -- Track buttons
 local buttons = {}
 
-local function createButtonFor(parentName)
+local function createButtonFor(parentName, quantity)
 	local button = Instance.new("TextButton")
 	button.Parent = scrollingFrame
 	button.Size = UDim2.new(1, -10, 0, 28)
-	button.Position = UDim2.new(0, 5, 0, 0)
 	button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.SourceSans
 	button.TextSize = 16
-	button.Text = "Move: " .. parentName
+	button.Text = "Move: " .. parentName .. " (" .. quantity .. ")"
 	button.Name = parentName
 
 	button.MouseButton1Click:Connect(function()
@@ -99,23 +103,27 @@ end
 -- Update buttons every second
 task.spawn(function()
 	while true do
-		local currentParentNames = {}
+		local currentCounts = {}
 
 		for _, part in ipairs(itemsFolder:GetDescendants()) do
 			local parent = part.Parent
 			if validNames[part.Name] and parent and not isExcludedParent(parent.Name) then
-				currentParentNames[parent.Name] = true
+				currentCounts[parent.Name] = (currentCounts[parent.Name] or 0) + 1
 			end
 		end
 
-		for name in pairs(currentParentNames) do
-			if not buttons[name] then
-				createButtonFor(name)
+		-- Add new buttons or update text
+		for name, count in pairs(currentCounts) do
+			if buttons[name] then
+				buttons[name].Text = "Move: " .. name .. " (" .. count .. ")"
+			else
+				createButtonFor(name, count)
 			end
 		end
 
+		-- Remove buttons for items that are gone
 		for name, button in pairs(buttons) do
-			if not currentParentNames[name] then
+			if not currentCounts[name] then
 				button:Destroy()
 				buttons[name] = nil
 			end
@@ -126,7 +134,7 @@ task.spawn(function()
 end)
 
 -- Tween fade in/out
-local isVisible = false
+local isVisible = true
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local function fadeGUI(show)
@@ -143,7 +151,7 @@ local function fadeGUI(show)
 	end
 end
 
--- Toggle on B
+-- Toggle GUI with B key
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.B then
@@ -151,3 +159,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		fadeGUI(isVisible)
 	end
 end)
+
+-- Initial fade in
+fadeGUI(true)
